@@ -33,14 +33,17 @@ class Build : NukeBuild
     ///   - Microsoft VisualStudio     https://nuke.build/visualstudio
     ///   - Microsoft VSCode           https://nuke.build/vscode
 
-    public static int Main () => Execute<Build>(x => x.Pack);
+    public static int Main () => Execute<Build>(x => x.Push);
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
 
+    [Parameter] string NugetApiUrl = "https://api.nuget.org/v3/index.json"; //default
+    [Parameter] string NugetApiKey;
+
     [Solution] readonly Solution Solution;
-    [GitRepository] readonly GitRepository GitRepository;
-    [GitVersion(Framework = "netcoreapp3.1")] readonly GitVersion GitVersion;
+    //[GitRepository] readonly GitRepository GitRepository;
+    [GitVersion(Framework = "net6.0")] readonly GitVersion GitVersion;
 
     AbsolutePath SourceDirectory => RootDirectory / "src";
     AbsolutePath TestsDirectory => RootDirectory / "tests";
@@ -89,7 +92,7 @@ class Build : NukeBuild
         .DependsOn(Publish)
         .Executes(() => {
             DotNetPack(s => s
-                .SetProject(Solution.GetProject("FlintSoft.Extensions"))
+                .SetProject(Solution.GetProject("FlintSoft.Tools"))
                 .SetConfiguration(Configuration)
                 .EnableNoBuild()
                 .EnableNoRestore()
@@ -117,16 +120,16 @@ class Build : NukeBuild
                 throw new Exception("Could not get Nuget Api Key environment variable");
             }
 
-            //GlobFiles(ArtifactsDirectory, "*.nupkg")
-            //   .NotEmpty()
-            //   .Where(x => !x.EndsWith("symbols.nupkg"))
-            //   .ForEach(x =>
-            //   {
-            //       DotNetNuGetPush(s => s
-            //           .SetTargetPath(x)
-            //           .SetSource(nugetUrl)
-            //           .SetApiKey(nugetApiKey)
-            //       );
-            //   });
+            GlobFiles(ArtifactsDirectory, "*.nupkg")
+               .NotEmpty()
+               .Where(x => !x.EndsWith("symbols.nupkg"))
+               .ForEach(x =>
+               {
+                   DotNetNuGetPush(s => s
+                       .SetTargetPath(x)
+                       .SetSource(nugetUrl)
+                       .SetApiKey(nugetApiKey)
+                   );
+               });
         });    
 }
